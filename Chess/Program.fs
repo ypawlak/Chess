@@ -4,4 +4,5 @@
 [<EntryPoint>]
 let main argv = 
     printfn "%A" argv
+    Board.setPiecesForGame
     0 // return an integer exit code
