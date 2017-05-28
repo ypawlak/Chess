@@ -14,10 +14,10 @@ let H = 7
 
 let rec getFreeSquareCoords row colsToCheck =
     match colsToCheck with
-    | [] -> invalidOp "All given squares are already occupied"
+    | [] -> invalidOp "All given squares are already occupied."
     | H::T when Board.[row, H].IsNone -> H
     | H::T when Board.[row, H].IsSome -> getFreeSquareCoords row T
-    | _ -> failwith "Unexpected error: wrong program flow"
+    | _ -> failwith "Unexpected error: wrong program flow."
 
 let getColumnStartIndex pRank row =
     let possibleColumns =
