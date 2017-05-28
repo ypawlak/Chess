@@ -48,7 +48,7 @@ let getStartPosition piece =
 
 let putPieceOnBoard piece (row, col) = 
     Board.[row, col] <- Some piece;
-    printfn "Putting %A piece at coords %A" piece (row, col)
+    //printfn "Putting %A piece at coords %A" piece (row, col)
 
 let setPiecesForGame = 
     Pieces.Whites |> List.iter (fun x -> putPieceOnBoard x (getStartPosition x));

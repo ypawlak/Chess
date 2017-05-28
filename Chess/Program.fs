@@ -5,4 +5,5 @@
 let main argv = 
     printfn "%A" argv
     Board.setPiecesForGame
+    printfn "%A" Board.Board
     0 // return an integer exit code
