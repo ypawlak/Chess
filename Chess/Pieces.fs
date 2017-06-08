@@ -32,3 +32,8 @@ let getInitialPiecesForGivenColor color =
 
 let Whites = getInitialPiecesForGivenColor White
 let Blacks = getInitialPiecesForGivenColor Black
+
+let negate color = 
+    match color with
+    | White -> Black
+    | Black -> White

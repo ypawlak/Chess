@@ -3,6 +3,5 @@
 
 [<EntryPoint>]
 let main argv = 
-    Board.setPiecesForGame
-    printfn "%A" Board.Board
+    let board = Board.initialGameBoard
     0 // return an integer exit code

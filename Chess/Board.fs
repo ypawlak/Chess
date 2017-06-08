@@ -1,25 +1,37 @@
 ﻿module Board
+open System.Collections.Generic
 
-let Board : Pieces.Piece option [,] = Array2D.zeroCreate 8 8
+let A = 1
+let B = 2
+let C = 3
+let D = 4
+let E = 5
+let F = 6
+let G = 7
+let H = 8
 
-let A = 0
-let B = 1
-let C = 2
-let D = 3
-let E = 4
-let F = 5
-let G = 6
-let H = 7
+let WhiteFiguresStartY = 1
+let WhitePawnStartY = 2
+let BlackPawnStartY = 7
+let BlackFiguresStartY = 8
 
+let isOccupied (square, board: Dictionary<int*int, Pieces.Piece option>) =
+    match board.[square] with
+    | Some piece -> true
+    | None -> false
 
-let rec getFreeSquareCoords row colsToCheck =
+let isOccupiedByPieceOfGivenColor (square, color: Pieces.PieceColor, board: Dictionary<int*int, Pieces.Piece option>) =
+    match board.[square] with
+    | Some { Pieces.Piece.Color = color; Pieces.Piece.Rank = _; } -> true
+    | None -> false
+
+let rec getFreeSquareXCoord (yCoord, colsToCheck, board: Dictionary<int*int, Pieces.Piece option>) =
     match colsToCheck with
     | [] -> invalidOp "All given squares are already occupied."
-    | H::T when Board.[row, H].IsNone -> H
-    | H::T when Board.[row, H].IsSome -> getFreeSquareCoords row T
-    | _ -> failwith "Unexpected error: wrong program flow."
+    | head::tail when isOccupied ((head, yCoord), board ) -> getFreeSquareXCoord (yCoord, tail, board)
+    | head::tail -> head
 
-let getColumnStartIndex pRank row =
+let getInitialXIndex (pRank, yCoord, board: Dictionary<int*int, Pieces.Piece option>) =
     let possibleColumns =
         match pRank with
         | Pieces.Pawn -> [A..H]
@@ -29,29 +41,37 @@ let getColumnStartIndex pRank row =
         | Pieces.Queen -> [D]
         | Pieces.King -> [E]
     in
-        getFreeSquareCoords row possibleColumns
+        getFreeSquareXCoord(yCoord, possibleColumns, board)
 
-let getRowStartIndex piece =
+let getInitialYIndex piece =
     match piece with 
     | { Pieces.Piece.Color = Pieces.PieceColor.White; Pieces.Piece.Rank = Pieces.Pawn }
-        -> 6
+        -> WhitePawnStartY
     | { Pieces.Piece.Color = Pieces.PieceColor.White }
-        -> 7
+        -> WhiteFiguresStartY
     | { Pieces.Piece.Color = Pieces.PieceColor.Black; Pieces.Piece.Rank = Pieces.Pawn }
-        -> 1
+        -> BlackPawnStartY
     | { Pieces.Piece.Color = Pieces.PieceColor.Black }
-        -> 0
+        -> BlackFiguresStartY
 
-let getStartPosition piece = 
-    let rowInd = getRowStartIndex piece
-    (rowInd, getColumnStartIndex piece.Rank rowInd)
+let putOnInitialPosition (piece, board: Dictionary<int*int, Pieces.Piece option>)  = 
+    let y = getInitialYIndex piece in
+    let square = getInitialXIndex (piece.Rank, y, board), y in
+    board.[square] <- Some piece
+    Printf.printfn "Putting piece %A on %A" piece square
 
-let putPieceOnBoard piece (row, col) = 
-    Board.[row, col] <- Some piece;
-    //printfn "Putting %A piece at coords %A" piece (row, col)
+let setPiecesForGame (board: Dictionary<int*int, Pieces.Piece option>) = 
+    Printf.printfn "%A" (Pieces.Whites @ Pieces.Blacks)
+    Pieces.Whites @ Pieces.Blacks
+    |> List.iter (fun piece -> putOnInitialPosition (piece, board)) 
+    board
 
-let setPiecesForGame = 
-    Pieces.Whites |> List.iter (fun x -> putPieceOnBoard x (getStartPosition x));
-    Pieces.Blacks |> List.iter (fun x -> putPieceOnBoard x (getStartPosition x));
-
+let initialGameBoard =
+    let board = new Dictionary<int*int, Pieces.Piece option>() in
+    for x in A..H do
+        for y in 1..8 do
+            let square = x, y in 
+            board.[square] <- None
+    Printf.printfn "%A" board
+    setPiecesForGame board
 
