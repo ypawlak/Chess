@@ -25,7 +25,9 @@ let getPiecesOfGivenRank pieceRank =
 
 let initialPiecesRanksList = List.concat (ranksSet |> List.map getPiecesOfGivenRank)
 
-type Piece = {Rank:PieceRank; Color:PieceColor}
+type Piece =
+    {Rank:PieceRank; Color:PieceColor}
+    override this.ToString() = sprintf "%A %A" this.Color this.Rank
 
 let getInitialPiecesForGivenColor color =
     initialPiecesRanksList |> List.map (fun x -> {Rank=x; Color=color})

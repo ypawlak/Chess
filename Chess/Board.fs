@@ -1,19 +1,58 @@
 ﻿module Board
 open System.Collections.Generic
 
-let A = 1
-let B = 2
-let C = 3
-let D = 4
-let E = 5
-let F = 6
-let G = 7
-let H = 8
+let CharsToNums = [
+    'A', 1
+    'B', 2
+    'C', 3
+    'D', 4
+    'E', 5
+    'F', 6
+    'G', 7
+    'H', 8
+    ]
+
+let numsByChars = dict CharsToNums
+
+let NumericValue c = 
+    match numsByChars.TryGetValue(c) with
+    | true, v -> v
+    | _ -> failwith (sprintf "letter '%c' was not in lookup table" c)
+
+let NumsToChars = [
+    1, 'A'
+    2, 'B'
+    3, 'C'
+    4, 'D'
+    5, 'E'
+    6, 'F'
+    7, 'G'
+    8, 'H'
+    ]
+
+let charsByNums = dict NumsToChars
+
+let CharValue d = 
+    match charsByNums.TryGetValue(d) with
+    | true, v -> v
+    | _ -> failwith (sprintf "digit '%d' was not in lookup table" d)
+
+let A = NumericValue 'A'
+let B = NumericValue 'B'
+let C = NumericValue 'C'
+let D = NumericValue 'D'
+let E = NumericValue 'E'
+let F = NumericValue 'F'
+let G = NumericValue 'G'
+let H = NumericValue 'H'
 
 let WhiteFiguresStartY = 1
 let WhitePawnStartY = 2
 let BlackPawnStartY = 7
 let BlackFiguresStartY = 8
+
+let getPrettyCoordsPrint (x, y) =
+    sprintf "%c%d" (CharValue x) y
 
 let isOccupied (square, board: Dictionary<int*int, Pieces.Piece option>) =
     match board.[square] with
@@ -23,7 +62,7 @@ let isOccupied (square, board: Dictionary<int*int, Pieces.Piece option>) =
 let isOccupiedByPieceOfGivenColor (square, color: Pieces.PieceColor, board: Dictionary<int*int, Pieces.Piece option>) =
     match board.[square] with
     | Some { Pieces.Piece.Color = color; Pieces.Piece.Rank = _; } -> true
-    | None -> false
+    | _ -> false
 
 let rec getFreeSquareXCoord (yCoord, colsToCheck, board: Dictionary<int*int, Pieces.Piece option>) =
     match colsToCheck with
@@ -75,3 +114,8 @@ let initialGameBoard =
     Printf.printfn "%A" board
     setPiecesForGame board
 
+let getPiecesOfGivenColor (color, board: Dictionary<int*int, Pieces.Piece option>) =
+    board 
+    |> Seq.filter (fun (KeyValue(coords, piece)) -> piece.IsSome && piece.Value.Color = color)
+    |> Seq.map (fun (KeyValue(coords, piece)) -> coords)
+    |> Seq.toList

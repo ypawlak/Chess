@@ -19,6 +19,16 @@ type MoveEffect =
     | Promotion
     | EnPassantCapture
     | Castle
+
+type Move =
+    {   
+        Moved: Pieces.Piece;
+        StartSquare: int * int;
+        DestinationSquare: int * int;
+        Type: MoveType;
+    }
+    override this.ToString() =
+        sprintf "%O %s -> %s [%A]" this.Moved (Board.getPrettyCoordsPrint this.StartSquare) (Board.getPrettyCoordsPrint this.DestinationSquare) this.Type
   
 let getMoveTypesFor (pieceRank: Pieces.PieceRank) =
     match pieceRank with
@@ -67,8 +77,8 @@ let getMoveVectorsFor moveType pieceColor =
     | Pieces.White -> getWhitesMoveVectorsFor moveType
     | Pieces.Black -> getBlacksMoveVectorsFor moveType
 
-let isInsideBoard (move, sourceSquare, board: Dictionary<int*int, Pieces.Piece option>) =
-    board.ContainsKey(Utils.add sourceSquare move)
+let isInsideBoard (move, startSquare, board: Dictionary<int*int, Pieces.Piece option>) =
+    board.ContainsKey (Utils.add startSquare move)
 
 let getPassedSquaresForFlatMove sourceSq destSq =
     let xSeq, ySeq = 
@@ -85,7 +95,7 @@ let getPassedSquaresForFlatMove sourceSq destSq =
 
 let getPassedSquares moveType sourceSq destSq =
     match moveType with
-    | Knight -> []
+    | Knight -> [destSq]
     | _ -> getPassedSquaresForFlatMove sourceSq destSq
 
 let rec hasCollidingPiecesOnTheWay (moveType, passedSquares, movedPiece: Pieces.Piece, board: Dictionary<int*int, Pieces.Piece option>) =
@@ -94,23 +104,23 @@ let rec hasCollidingPiecesOnTheWay (moveType, passedSquares, movedPiece: Pieces.
     | PawnInitial, [destSquare] | PawnSimple, [destSquare] | PawnEnPassant, [destSquare] 
         -> Board.isOccupied(destSquare, board)
     | _, [destSquare]
-        -> Board.isOccupiedByPieceOfGivenColor(destSquare, movedPiece.Color, board)
+        -> Board.isOccupiedByPieceOfGivenColor (destSquare, movedPiece.Color, board)
     | _, head::tail
-        -> Board.isOccupied(head, board) || hasCollidingPiecesOnTheWay(moveType, tail, movedPiece, board)
+        -> Board.isOccupied (head, board) || hasCollidingPiecesOnTheWay (moveType, tail, movedPiece, board)
 
 let isNotCollidingWithOtherPieces (moveType, sourceSq, moveVector, board: Dictionary<int*int, Pieces.Piece option>) =
     let passedSquares = getPassedSquares moveType sourceSq (Utils.add sourceSq moveVector) in
     let movedPiece = board.[sourceSq].Value in
-    not (hasCollidingPiecesOnTheWay(moveType, passedSquares, movedPiece, board))
+    not (hasCollidingPiecesOnTheWay (moveType, passedSquares, movedPiece, board))
 
-let matchesCustomRules (moveType, sourceSquare, moveVec, board: Dictionary<int*int, Pieces.Piece option>) =
-    let movedPiece = board.[sourceSquare].Value in
-    let dest = Utils.add sourceSquare moveVec in
+let matchesCustomRules (moveType, startSquare, moveVec, board: Dictionary<int*int, Pieces.Piece option>) =
+    let movedPiece = board.[startSquare].Value in
+    let dest = Utils.add startSquare moveVec in
     let oppositeColor = Pieces.negate movedPiece.Color in
     match moveType with
     | PawnInitial
         ->
-            let sx, sy = sourceSquare in
+            let sx, sy = startSquare in
             movedPiece.Color = Pieces.Black && sy = Board.BlackPawnStartY ||
             movedPiece.Color = Pieces.White && sy = Board.WhitePawnStartY
     | PawnCapture
@@ -120,27 +130,50 @@ let matchesCustomRules (moveType, sourceSquare, moveVec, board: Dictionary<int*i
         ->
             let yDeltaToCaptured = if oppositeColor = Pieces.Black then -1 else 1
             let captX, captY = Utils.add dest (0, yDeltaToCaptured) in
-            Board.isOccupiedByPieceOfGivenColor((captX, captY), oppositeColor, board) &&
+            Board.isOccupiedByPieceOfGivenColor ((captX, captY), oppositeColor, board) &&
             (oppositeColor = Pieces.Black && captY = Board.BlackPawnStartY - 2 ||
              oppositeColor = Pieces.White && captY = Board.WhitePawnStartY + 2)
     | KingCastle -> false // TODO: conditions for castle
     | _ -> true
 
-let filterMoves (moveType, sourceSquare, moveVcs, board: Dictionary<int*int, Pieces.Piece option>) =
+let filterMoveVectors (moveType, startSquare, moveVcs, board: Dictionary<int*int, Pieces.Piece option>) =
     let possibleMoves =
         moveVcs
         |> List.filter (fun mv ->
-            isInsideBoard(mv, sourceSquare, board) &&
-            isNotCollidingWithOtherPieces(moveType, sourceSquare, mv, board) &&
-            matchesCustomRules(moveType, sourceSquare, mv, board)) in
-    possibleMoves;
+            isInsideBoard(mv, startSquare, board) &&
+            isNotCollidingWithOtherPieces(moveType, startSquare, mv, board) &&
+            matchesCustomRules(moveType, startSquare, mv, board)) in
+    moveType, possibleMoves;
 
-let getAvailableMoves (sourceSquare, board: Dictionary<int*int, Pieces.Piece option>) =
-    let movedPiece = board.[sourceSquare].Value in
+
+let getDestinations startSquare moveVecs = 
+    moveVecs
+    |> List.map (fun mv -> Utils.add startSquare mv)
+
+let createMoves moved startSquare moveVecs mType =
+    moveVecs 
+    |> getDestinations startSquare
+    |> List.map (fun dest ->
+        {
+            StartSquare = startSquare;
+            DestinationSquare = dest;
+            Type = mType;
+            Moved = moved
+        })
+
+let getMovesForPiece (startSquare, board: Dictionary<int*int, Pieces.Piece option>) =
+    let movedPiece = board.[startSquare].Value in
     let availableMoveTypes = getMoveTypesFor movedPiece.Rank in
-    let filteredMoveVectors = List.concat (availableMoveTypes
-        |> List.map (fun mvType -> (mvType, getMoveVectorsFor mvType movedPiece.Color))
-        |> List.map (fun (mType, mVecs) -> filterMoves(mType, sourceSquare, mVecs, board))) in
-    filteredMoveVectors;
+    let moves =
+        availableMoveTypes
+        |> List.map (fun mvType -> mvType, getMoveVectorsFor mvType movedPiece.Color)
+        |> List.map (fun (mType, mVecs) -> filterMoveVectors (mType, startSquare, mVecs, board)) 
+        |> List.map (fun (mType, mVecs) -> createMoves movedPiece startSquare mVecs mType) in
+    List.concat moves
 
+let getMovesForColor (color, board: Dictionary<int*int, Pieces.Piece option>) =
+    let movesByPieces =
+        Board.getPiecesOfGivenColor (color, board)
+        |> List.map (fun coords -> getMovesForPiece (coords, board)) in
+    List.concat movesByPieces;
      
