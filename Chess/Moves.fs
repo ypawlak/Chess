@@ -158,7 +158,7 @@ let createMoves moved startSquare moveVecs mType =
             StartSquare = startSquare;
             DestinationSquare = dest;
             Type = mType;
-            Moved = moved
+            Moved = moved;
         })
 
 let getMovesForPiece (startSquare, board: Dictionary<int*int, Pieces.Piece option>) =
@@ -176,4 +176,27 @@ let getMovesForColor (color, board: Dictionary<int*int, Pieces.Piece option>) =
         Board.getPiecesOfGivenColor (color, board)
         |> List.map (fun coords -> getMovesForPiece (coords, board)) in
     List.concat movesByPieces;
+
+let leadsToOpponentFiguresEnd move =
+    match move.DestinationSquare, move.Moved.Color with
+    | (_, dy), Pieces.White when dy = Board.BlackFiguresStartY -> true
+    | (_, dy), Pieces.Black when dy = Board.WhiteFiguresStartY -> true
+    | _ -> false
+
+let getEffect move = 
+    match move.Type with
+    | PawnSimple | PawnCapture when leadsToOpponentFiguresEnd move -> Promotion
+    | PawnEnPassant -> EnPassantCapture
+    | KingCastle-> Castle
+    | _ -> Standard
+
+let performStandardMove (move, board: Dictionary<int*int, Pieces.Piece option>) =
+    board.[move.StartSquare] <- None
+    board.[move.DestinationSquare] <- Some move.Moved
+
+let performMove (move, board: Dictionary<int*int, Pieces.Piece option>) =
+    let moveEffect =  getEffect move in
+    match moveEffect with
+    | Standard -> performStandardMove (move, board)
+    | _ -> failwith "NotImplementedException"; //TODO
      

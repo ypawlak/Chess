@@ -54,6 +54,19 @@ let BlackFiguresStartY = 8
 let getPrettyCoordsPrint (x, y) =
     sprintf "%c%d" (CharValue x) y
 
+let getPrettySquarePrint square coords =
+    match square, coords with
+    | Some piece, _ -> sprintf "%O" piece
+    | None, (x,y) when x % 2 = y % 2 -> sprintf "#####%s#####" (getPrettyCoordsPrint coords)
+    | None, (x,y) when x % 2 <> y % 2 -> sprintf "*****%s*****" (getPrettyCoordsPrint coords)
+    | _ -> failwithf "Unexpected program flow"
+
+let print (board: Dictionary<int*int, Pieces.Piece option>) =
+    for y in (Utils.absRange 8 1) do
+        for x in A..H do
+            Printf.printf "%s\t" (getPrettySquarePrint board.[x, y] (x,y))
+        Printf.printfn "\n"
+
 let isOccupied (square, board: Dictionary<int*int, Pieces.Piece option>) =
     match board.[square] with
     | Some piece -> true
@@ -61,7 +74,7 @@ let isOccupied (square, board: Dictionary<int*int, Pieces.Piece option>) =
 
 let isOccupiedByPieceOfGivenColor (square, color: Pieces.PieceColor, board: Dictionary<int*int, Pieces.Piece option>) =
     match board.[square] with
-    | Some { Pieces.Piece.Color = color; Pieces.Piece.Rank = _; } -> true
+    | Some { Pieces.Piece.Color = mColor; Pieces.Piece.Rank = _; } when mColor = color -> true
     | _ -> false
 
 let rec getFreeSquareXCoord (yCoord, colsToCheck, board: Dictionary<int*int, Pieces.Piece option>) =
@@ -97,10 +110,9 @@ let putOnInitialPosition (piece, board: Dictionary<int*int, Pieces.Piece option>
     let y = getInitialYIndex piece in
     let square = getInitialXIndex (piece.Rank, y, board), y in
     board.[square] <- Some piece
-    Printf.printfn "Putting piece %A on %A" piece square
+    //Printf.printfn "Putting piece %A on %A" piece square
 
 let setPiecesForGame (board: Dictionary<int*int, Pieces.Piece option>) = 
-    Printf.printfn "%A" (Pieces.Whites @ Pieces.Blacks)
     Pieces.Whites @ Pieces.Blacks
     |> List.iter (fun piece -> putOnInitialPosition (piece, board)) 
     board
@@ -111,7 +123,6 @@ let initialGameBoard =
         for y in 1..8 do
             let square = x, y in 
             board.[square] <- None
-    Printf.printfn "%A" board
     setPiecesForGame board
 
 let getPiecesOfGivenColor (color, board: Dictionary<int*int, Pieces.Piece option>) =
